@@ -1,131 +1,92 @@
  
-# Flask App with MySQL Docker Setup
+# Two Tier Flask App with AWS RDS-Docker Setup
 
-This is a simple Flask app that interacts with a MySQL database. The app allows users to submit messages, which are then stored in the database and displayed on the frontend.
+This is a Flask app that interacts with a AWS RDS database. The app allows users to submit messages, which are then stored in the database and displayed on the frontend.
 
-## Prerequisites
+## Objective 
 
-Before you begin, make sure you have the following installed:
+1. Create a separate Jenkins EC2 to pull the code via Github-Webhook and create Image and upload to AWS ECR.
+3. Create a RDS Database. Inbound port:3306 from RDS SG to EC2 Launch Template SG.
+4. Create a Launch Template with user_data.sh script that will install all packages, pull and run the docker image.
+5. Attach a IAM Role with Launch Template for EC2ContainerRegistry and RDS Full Access and also Cloud-Watch full access.
+6. Create a Target group with HTTP port as 5000.
+7. Create a Auto-Scaling Group, use Launch Template default version, attach a new load balancer. 
+8. Create a Inbound Rule for port:5000 from EC2 to Load Balancer SG.
+9. Create a Outbond Rule for port:5000 from Load Balancer SG to EC2.
 
-- Docker
-- Git (optional, for cloning the repository)
-
-## Setup
-
-1. Clone this repository (if you haven't already):
-
-   ```bash
-   git clone https://github.com/your-username/your-repo-name.git
-   ```
-
-2. Navigate to the project directory:
-
-   ```bash
-   cd your-repo-name
-   ```
-
-3. Create a `.env` file in the project directory to store your MySQL environment variables:
-
-   ```bash
-   touch .env
-   ```
-
-4. Open the `.env` file and add your MySQL configuration:
-
-   ```
-   MYSQL_HOST=mysql
-   MYSQL_USER=your_username
-   MYSQL_PASSWORD=your_password
-   MYSQL_DB=your_database
-   ```
-
-## Usage
-
-1. Start the containers using Docker Compose:
-
-   ```bash
-   docker-compose up --build
-   ```
-
-2. Access the Flask app in your web browser:
-
-   - Frontend: http://localhost
-   - Backend: http://localhost:5000
-
-3. Create the `messages` table in your MySQL database:
-
-   - Use a MySQL client or tool (e.g., phpMyAdmin) to execute the following SQL commands:
    
-     ```sql
-     CREATE TABLE messages (
-         id INT AUTO_INCREMENT PRIMARY KEY,
-         message TEXT
-     );
-     ```
+## Jenkins EC2
 
-4. Interact with the app:
+1. Create a EC2 instance, and inbound port:8080 for Jenkins. Attach ElasticIP with EC2.
 
-   - Visit http://localhost to see the frontend. You can submit new messages using the form.
-   - Visit http://localhost:5000/insert_sql to insert a message directly into the `messages` table via an SQL query.
+**Note** : ElasticIPs won't change on start/stop of instance.
 
-## Cleaning Up
+2. Do SSH. Install Java, Jenkins, docker and awscli.
 
-To stop and remove the Docker containers, press `Ctrl+C` in the terminal where the containers are running, or use the following command:
+3. http://Elastic_Public_Ip:8080 : Jenkins URL
 
-```bash
-docker-compose down
-```
+4. Install Plugins : AWS Credentials, AWS Steps, Pipeline: View Stage
+   
+5. Refer to "Jenkinsfile" named file for the Pipeline Code.
 
-## To run this two-tier application using  without docker-compose
+6. Set up Github-Webhook.
 
-- First create a docker image from Dockerfile
-```bash
-docker build -t flaskapp .
-```
+**Webhook** : Jenkins automatically runs the Build whenever some change in the github repo.
 
-- Now, make sure that you have created a network using following command
-```bash
-docker network create twotier
-```
+## Create DB in AWS RDS
 
-- Attach both the containers in the same network, so that they can communicate with each other
+Create a DB. Select MYSQL while creating DB.
 
-i) MySQL container 
-```bash
-docker run -d \
-    --name mysql \
-    -v mysql-data:/var/lib/mysql \
-    --network=twotier \
-    -e MYSQL_DATABASE=mydb \
-    -e MYSQL_ROOT_PASSWORD=admin \
-    -p 3306:3306 \
-    mysql:5.7
+Inbound Rule : Add port:3306 from RDS SG to EC2 Launch Template SG.
+
+## Create Launch Template
+
+Refer user_script.sh required during creation if launch template.
 
 ```
-ii) Backend container
-```bash
-docker run -d \
-    --name flaskapp \
-    --network=twotier \
-    -e MYSQL_HOST=mysql \
-    -e MYSQL_USER=root \
-    -e MYSQL_PASSWORD=admin \
-    -e MYSQL_DB=mydb \
-    -p 5000:5000 \
-    flaskapp:latest
+Inside user_data.sh :
 
+a. Installation of docker,awscli, mysql and other packages.
+b. EC2 to ECR login check
+c. Docker Pull Image
+d. EC2 to RDS Connectivity check
+e. Creating DB in RDS
+f. Running the container
 ```
 
-## Notes
+**Note** : Create a IAM Role. EC2 to EC2ContainerRegistry and RDS Full Access and also Cloud-Watch full access.
 
+Attach the IAM Role while creating instance.
+
+## Create Target Group, Load Balancer and  Auto-Scaling Group
+
+1. Create Target Group with port: 5000
+
+2. While Creating Auto-Scaling Group, attach the Launch Template with Default version.
+
+3. Create a Application Load Balancer while creating ASG.
+
+ **Note** : (Desired/Min/Max) Capacity : (1/1/your_wish).
+
+5. Once the ASG created, you will see a instance will come up.
+
+6. Check all the Inbound and Outbond among service connecting.
+
+7. You are good to access the Flask app through the Load Balancer DNS URL.
+
+
+## Login in RDS
+
+ ```
+"mysql -u user_name -h db_endpoint_url -P 3306 -p" press Enter : Fill the Password in prompt. Logged in.
 ```
-- Make sure to replace placeholders (e.g., `your_username`, `your_password`, `your_database`) with your actual MySQL configuration.
+1. Check your database in created or not.
+2. If yes,In that database, a MESSAGE table will be created.
+3. You can insert value in table and can check in the flaskapp updated and vice versa.
 
-- This is a basic setup for demonstration purposes. In a production environment, you should follow best practices for security and performance.
 
-- Be cautious when executing SQL queries directly. Validate and sanitize user inputs to prevent vulnerabilities like SQL injection.
 
-- If you encounter issues, check Docker logs and error messages for troubleshooting.
+**Congrats, You have automated a Fully Working Two-Tier Application, which will Auto-Scale the Instance as per Load on App.**
 
-```
+
 
