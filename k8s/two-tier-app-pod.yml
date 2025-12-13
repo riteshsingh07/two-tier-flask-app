@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: flask-app-pod
+  namespace: flask-app-ns
+
+spec:
+  imagePullSecrets:
+    - name: ecr-image-secret  #Created a secret to pull image
+  containers:
+    - name: flask-app-cont
+      image: 705307574472.dkr.ecr.us-east-1.amazonaws.com/flask-app-ecr:latest   # Pulling Image from AWS ECR 
+      envFrom:
+        - configMapRef:
+            name: flask-app-config    # ConfigMap.yml for AWS RDS detail
+        - secretRef:
+            name: flask-app-secret     # # ConfigMap.yml for AWS RDS user and password
+      ports:
+        - containerPort: 5000
+      imagePullPolicy: Always
+    

@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: flask-app-config
+  namespace: flask-app-ns
+
+data:
+  MYSQL_HOST: "database-1.cnmeyyegcyzt.ap-south-1.rds.amazonaws.com"
+  MYSQL_DB: "devops"
+  MYSQL_PORT: "3306"
