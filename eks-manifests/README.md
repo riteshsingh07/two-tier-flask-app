@@ -11,7 +11,7 @@ Install below :
 ```
 1. Install awscli
 2. Install kubectl
-3. Install eskctl
+3. Install eksctl
 ```
 
 ```
